@@ -13,6 +13,63 @@
 #define MASK_LEN_SOBEL 9
 #define MASK_LEN_GAUSS 25 
 #define PI 3.14159265
+
+void surface_to_hough(SDL_Surface * surface)
+{
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int len = w * h;
+	SDL_LockSurface(surface);
+
+	int tresh = 35; //temporary
+	
+	int diag = (int)sqrt(w*w + h*h);
+	int * h_plane = calloc(diag * 180, sizeof(int));
+	char * lines = calloc(len,1); // sizeof(char) = 1
+	for(int i = 0; i < len; i++)
+	{
+		if(pixels[i] > 0)
+		{
+			int y = i / w;
+			int x = i - (y * w);
+			for(int theta = 0; theta < 180; theta++)
+			{
+				double t_rad = theta * (180./ PI);
+				int rho = x * cos(t_rad) + y * sin(t_rad);
+				int p = rho*w + theta;
+				if(p >= 0 && p < diag * 180)
+					h_plane[p]++;
+			}
+		}	
+	}
+
+	
+	for(int i = 0; i < diag * 180; i++)
+	{
+		if(h_plane[i] > tresh)
+		{
+			int rho = i / w;
+			int theta = i - (rho * w);
+			int a;
+			if(theta != 0) // theta = 0 => Vertical line  
+				a = (-1)*(cos(theta)/sin(theta));
+			else
+				a = 0;
+			int b = rho/sin(theta);
+			// y = ax + b
+			for(int j = 0; j < w; i++)
+			{
+				if(j*a+b > 0 && j*a+b < len)
+					lines[j*a+b] = 255; 
+					// pixels goes white
+			}
+
+		}
+	}
+	// * lines holds the B&W bytes of the detected lines
+	
+}
 void surface_to_adaptive_treshold(SDL_Surface * surface, int size)
 {
 	Uint32* pixels = surface->pixels;
