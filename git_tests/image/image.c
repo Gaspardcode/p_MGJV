@@ -13,6 +13,58 @@
 #define MASK_LEN_SOBEL 9
 #define MASK_LEN_GAUSS 25 
 #define PI 3.14159265
+//void surface_to_resize(SDL_Surface * surface, const int w, const int h)
+//{}
+void surface_to_rotate_shear(SDL_Surface * surface, const int theta)
+{
+	// rotates counterclockwise
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int len = w * h;
+	const double r_t = (double)theta * (PI/180.);
+	double t = tan(r_t/2.);
+	double s = sin(r_t);
+	//double c = cos(r_t);
+	//int nw = abs((int)(w*c)) + abs((int)(h*s));
+	//int nh = abs((int)(h*c)) + abs((int)(w*s));
+	SDL_LockSurface(surface);
+	unsigned char * bigger = calloc(len,1);//sizeof(char) = 1
+	for(int i = 0; i < len; i++)
+	{
+		int x = i / w;
+		int y = i - (x * w);
+		int d_x = x - h/2;
+		int d_y = y - w/2;
+		int nx = d_x - d_y*t;//first shear
+		int ny = nx*s + d_y + w/2;//second shear
+		nx = nx - (ny-w/2)*t + h/2; //third shear
+		if(nx >= 0 && nx < h && ny >= 0 && ny < w)
+		{	
+			if(pixels[i] > 0)
+				bigger[nx*w + ny] = 0xFF;
+		}
+	}
+	/*
+	SDL_UnlockSurface(surface);
+	SDL_FreeSurface(surface);
+	free(pixels);
+
+	surface = SDL_CreateRGBSurface(0,nw,nh,32,0,0,0,0);
+	pixels = surface->pixels;
+	
+	SDL_LockSurface(surface);
+	*/
+	for(int i = 0; i < len; i++)
+		pixels[i] = (bigger[i] > 0) ? 0xFFFFFFFF : 0;
+	SDL_UnlockSurface(surface);
+	free(bigger);
+
+	if(surface == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+
+
+}
 //SDL_Surface * surface_to_rotate(SDL_Surface * surface, int theta)
 void surface_to_rotate(SDL_Surface * surface,const int theta)
 {
@@ -44,21 +96,21 @@ void surface_to_rotate(SDL_Surface * surface,const int theta)
 				bigger[nx*w + ny] = 0xFF;
 		}
 	}
-	/*	
+/*		
 	SDL_UnlockSurface(surface);
 	SDL_FreeSurface(surface);
 	
-	SDL_Surface * surface_b = SDL_CreateRGBSurfaceFrom(bigger,w+b,h+b,8,w+b,0,0,0,0);
+	SDL_Surface * surface_b = SDL_CreateRGBSurfaceFrom(bigger,w+b,h+b,32,w+b,0,0,0,0);
 	free(bigger);
 	if(surface_b == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
-	
+		
 	unsigned char * p = surface_b->pixels;
 	for(int i = 0; i < nlen; i++)
 	{
 		printf("%X ",p[i]);
 	}
-	*/		
+*/		
 	for(int i = 0; i < len; i++)
 		pixels[i] = (bigger[i] > 0) ? 0xFFFFFFFF : 0;
 
@@ -67,8 +119,6 @@ void surface_to_rotate(SDL_Surface * surface,const int theta)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
 	
 	//return surface_b;
-
-
 }
 void surface_to_hough(SDL_Surface * surface)
 {
@@ -131,7 +181,6 @@ void surface_to_hough(SDL_Surface * surface)
 	SDL_UnlockSurface(surface);
 	if(surface == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
-
 
 }
 void surface_to_adaptive_treshold(SDL_Surface * surface, int size)
@@ -1100,8 +1149,23 @@ int main(int argc, char** argv)
 	    //surface_to_median(sco);
 	    surface_to_adaptive_treshold(sco,1);
 	    //surface_to_hough(sco);
-	    surface_to_rotate(sco, 35);
-	    //sco = surface_to_rotate(sco, 35);
+	    //surface_to_rotate(sco, 35);
+	    surface_to_rotate_shear(sco, 35);
+/* 
+	    unsigned char * bigger = calloc(w*h,1);
+	    for(int i = 0; i < w*h; i++)
+		    bigger[i] = 0xFE;
+	    for(int i = 0; i < 0; i++)
+		    bigger[i] = 35;
+	    sco = SDL_ConvertSurfaceFormat(sco, SDL_PIXELTYPE_ARRAYU8,0);
+	    sco = SDL_CreateRGBSurfaceFrom(bigger,w,h,8,w,0,0,0,0);
+	    free(bigger);
+  	   if(sco->format->BitsPerPixel!=8)
+        		errx(EXIT_FAILURE, "not 8 bits per pixel");
+  	   if(sco->format->palette == NULL)
+        		errx(EXIT_FAILURE, "not 8 bits per pixel");
+	   printf("%d\n",sco->format->palette->ncolors);
+*/
     }
     // - Create a new texture from the grayscale surface.
     SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
