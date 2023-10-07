@@ -13,7 +13,63 @@
 #define MASK_LEN_SOBEL 9
 #define MASK_LEN_GAUSS 25 
 #define PI 3.14159265
+//SDL_Surface * surface_to_rotate(SDL_Surface * surface, int theta)
+void surface_to_rotate(SDL_Surface * surface,const int theta)
+{
+	// rotates counterclockwise
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int len = w * h;
+	//int b = (w + h)/3; // border
+	//int nlen = (w + b) * (h + b);
+	const double r_t = (double)theta * (PI/180.);
+	double c = cos(r_t);
+	double s = sin(r_t);
+	SDL_LockSurface(surface);
+	unsigned char * bigger = calloc(len,1);//sizeof(char) = 1
+	for(int i = 0; i < len; i++)
+	{
+		int x = i / w;
+		int y = i - (x * w);
+		int d_x = x - h/2;
+		int d_y = y - w/2;
+		//int nx = x*c - y*s + h/2;
+		//int ny = x*s + y*c + w/2;
+		int nx = d_x*c - d_y*s + h/2;
+		int ny = d_x*s + d_y*c + w/2;
+		if(nx >= 0 && nx < h && ny >= 0 && ny < w)
+		{	
+			if(pixels[i] > 0)
+				bigger[nx*w + ny] = 0xFF;
+		}
+	}
+	/*	
+	SDL_UnlockSurface(surface);
+	SDL_FreeSurface(surface);
+	
+	SDL_Surface * surface_b = SDL_CreateRGBSurfaceFrom(bigger,w+b,h+b,8,w+b,0,0,0,0);
+	free(bigger);
+	if(surface_b == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+	
+	unsigned char * p = surface_b->pixels;
+	for(int i = 0; i < nlen; i++)
+	{
+		printf("%X ",p[i]);
+	}
+	*/		
+	for(int i = 0; i < len; i++)
+		pixels[i] = (bigger[i] > 0) ? 0xFFFFFFFF : 0;
 
+	SDL_UnlockSurface(surface);
+	if(surface == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+	
+	//return surface_b;
+
+
+}
 void surface_to_hough(SDL_Surface * surface)
 {
 	Uint32* pixels = surface->pixels;
@@ -22,10 +78,12 @@ void surface_to_hough(SDL_Surface * surface)
 	int len = w * h;
 	SDL_LockSurface(surface);
 
-	int tresh = 35; //temporary
+	const int tresh = 35; //temporary
 	
 	int diag = (int)sqrt(w*w + h*h);
 	int * h_plane = calloc(diag * 180, sizeof(int));
+	printf("%d\n",diag * 180);
+	
 	char * lines = calloc(len,1); // sizeof(char) = 1
 	for(int i = 0; i < len; i++)
 	{
@@ -33,7 +91,7 @@ void surface_to_hough(SDL_Surface * surface)
 		{
 			int y = i / w;
 			int x = i - (y * w);
-			for(int theta = 0; theta < 180; theta++)
+			for(int theta = 0; theta < 180; theta += 5)
 			{
 				double t_rad = theta * (180./ PI);
 				int rho = x * cos(t_rad) + y * sin(t_rad);
@@ -61,14 +119,20 @@ void surface_to_hough(SDL_Surface * surface)
 			for(int j = 0; j < w; i++)
 			{
 				if(j*a+b > 0 && j*a+b < len)
-					lines[j*a+b] = 255; 
+					pixels[j*a+b] = 0xFFFFFF; 
 					// pixels goes white
 			}
 
 		}
 	}
 	// * lines holds the B&W bytes of the detected lines
-	
+	free(h_plane);
+	free(lines);
+	SDL_UnlockSurface(surface);
+	if(surface == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+
+
 }
 void surface_to_adaptive_treshold(SDL_Surface * surface, int size)
 {
@@ -302,26 +366,26 @@ double convolution(Uint8* pixels, int *mask, int len)
 {
 	double convol = 0;
 	
-	for(int i = 0; i < len; i++)
-		convol += mask[i] * (double)pixels[i];
-	
-	return convol;
+for(int i = 0; i < len; i++)
+	convol += mask[i] * (double)pixels[i];
+
+return convol;
 }
 double pixel_to_blur(Uint8* pixels)
 {
-	double G = convolution(pixels, Gaussian_sigma_one, MASK_LEN_GAUSS);
+double G = convolution(pixels, Gaussian_sigma_one, MASK_LEN_GAUSS);
 
-	//return (long double)(1./159.) * G;
-	return (long double)(1./273.) * G;
+//return (long double)(1./159.) * G;
+return (long double)(1./273.) * G;
 }
 int pixel_to_angle(Uint8* pixels)
 {
-	double Gx = (1./9.) * convolution(pixels, sobel_Gx, MASK_LEN_SOBEL);
-	double Gy = (1./9.) * convolution(pixels, sobel_Gy, MASK_LEN_SOBEL);
-	
-	double deg_convert = 180.000 / PI;
-	double angle = atan2(Gy,Gx) * deg_convert;
-	angle = (angle > 0) ? angle : (-1.0) * angle;
+double Gx = (1./9.) * convolution(pixels, sobel_Gx, MASK_LEN_SOBEL);
+double Gy = (1./9.) * convolution(pixels, sobel_Gy, MASK_LEN_SOBEL);
+
+double deg_convert = 180.000 / PI;
+double angle = atan2(Gy,Gx) * deg_convert;
+angle = (angle > 0) ? angle : (-1.0) * angle;
 
 	// rounds the angle to four directions
 	// 0 - 45 - 90 - 135
@@ -1001,6 +1065,7 @@ int main(int argc, char** argv)
 
     // - Create a surface from the colored image.
     SDL_Surface* sco = load_image(argv[1]);
+    //SDL_Surface* rot;
 
     int w = sco->w;
     int h = sco->h;
@@ -1034,12 +1099,16 @@ int main(int argc, char** argv)
 	    //surface_to_BlackAndWhite(sco);
 	    //surface_to_median(sco);
 	    surface_to_adaptive_treshold(sco,1);
+	    //surface_to_hough(sco);
+	    surface_to_rotate(sco, 35);
+	    //sco = surface_to_rotate(sco, 35);
     }
     // - Create a new texture from the grayscale surface.
     SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
 
     // - Free the surface.
     SDL_FreeSurface(sco);
+    //SDL_FreeSurface(rot);
 
     // - Dispatch the events.
     event_loop(renderer, texture, t_gray);
