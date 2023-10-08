@@ -13,8 +13,66 @@
 #define MASK_LEN_SOBEL 9
 #define MASK_LEN_GAUSS 25 
 #define PI 3.14159265
-//void surface_to_resize(SDL_Surface * surface, const int w, const int h)
-//{}
+void surface_to_resize(SDL_Surface * surface, const double scale)
+{ 
+	// downsize only
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int nw = scale * w;
+	int nh = scale * h;
+	printf("%d %d\n", nw ,nh);
+	unsigned char * resize = calloc(nw*nh,1); 
+	double x_r = w /(double)nw;
+	double y_r = h /(double)nh;
+	double x,y;
+	for(int i = 0; i < nh; i++)
+	{
+		for(int j = 0; j < nw; j++)
+		{
+			x = floor(i*y_r);
+			y = floor(j*x_r);
+			if(pixels[(int)(x*w + y)] > 0)
+				resize[(i*nw)+j] = 0xFF;
+		}
+	}
+	for(int i = 0; i < nh; i++)
+	{
+		for(int j = 0; j < nw; j++)
+		{
+			pixels[i*w + j] = (resize[i*nw + j] > 0) ? 0xFFFFFFFF : 0;
+		}	
+	}
+	SDL_UnlockSurface(surface);
+	free(resize);
+
+	if(surface == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+}
+void surface_to_resize_border(SDL_Surface ** surface, const int nw, const int nh)
+{
+	/*
+	Uint32 flags = (*surface)->flags;
+	SDL_Format format = (*surface)->format;
+	int depth = format->BitsPerPixel;
+	SDL_Surface *surf = SDL_CreateRGBSurface(flags,nw,nh,depth,0,0,0,0);
+	SDL_Rect crop = {0,0,nw,nh};
+	SDL_BlitSurface(*surface,&crop,surf,0);
+	*/
+	//SDL_Surface *surf = SDL_CreateRGBSurface(0,w,h,32,0,0,0,0);
+	Uint32* pixels = (*surface)->pixels;
+
+	int * pix = calloc(nw*nh,8);
+	SDL_LockSurface(*surface);
+	for(int i = 0; i < nw * nh ; i++)
+		pix[i] = (pixels[i] > 0) ? 0xFFFF : 0;	
+	SDL_UnlockSurface(*surface);
+
+	SDL_Surface *surf = SDL_CreateRGBSurfaceFrom(pix,nw,nh,16,nw*4,0,0,0,0);
+	SDL_FreeSurface(*surface);
+	*surface = surf;
+	free(pixels);
+}
 void surface_to_rotate_shear(SDL_Surface * surface, const int theta)
 {
 	// rotates counterclockwise
@@ -62,8 +120,6 @@ void surface_to_rotate_shear(SDL_Surface * surface, const int theta)
 
 	if(surface == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
-
-
 }
 //SDL_Surface * surface_to_rotate(SDL_Surface * surface, int theta)
 void surface_to_rotate(SDL_Surface * surface,const int theta)
@@ -1116,12 +1172,7 @@ int main(int argc, char** argv)
     SDL_Surface* sco = load_image(argv[1]);
     //SDL_Surface* rot;
 
-    int w = sco->w;
-    int h = sco->h;
-    // - Resize the window according to the size of the image.
-    SDL_SetWindowSize(window, w, h);
-
-    // - Create a texture from the colored surface.
+        // - Create a texture from the colored surface.
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, sco);
 
     if (texture == NULL)
@@ -1148,9 +1199,14 @@ int main(int argc, char** argv)
 	    //surface_to_BlackAndWhite(sco);
 	    //surface_to_median(sco);
 	    surface_to_adaptive_treshold(sco,1);
+	    surface_to_resize(sco,252./1000.);
+	    SDL_Rect src = {0,0,252,252};
+	    SDL_Rect dst = {300,300,252,252};
+	    SDL_BlitSurface(sco,&src,sco,&dst);
 	    //surface_to_hough(sco);
 	    //surface_to_rotate(sco, 35);
-	    surface_to_rotate_shear(sco, 35);
+	    //surface_to_rotate_shear(sco, 35);
+	    //surface_to_resize_border(&sco,300,300);
 /* 
 	    unsigned char * bigger = calloc(w*h,1);
 	    for(int i = 0; i < w*h; i++)
@@ -1167,6 +1223,12 @@ int main(int argc, char** argv)
 	   printf("%d\n",sco->format->palette->ncolors);
 */
     }
+    
+    int w = sco->w;
+    int h = sco->h;
+    // - Resize the window according to the size of the image.
+    SDL_SetWindowSize(window, w, h);
+
     // - Create a new texture from the grayscale surface.
     SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
 
