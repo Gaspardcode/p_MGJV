@@ -184,56 +184,83 @@ void surface_to_hough(SDL_Surface * surface)
 	int len = w * h;
 	SDL_LockSurface(surface);
 
-	const int tresh = 35; //temporary
+	const int tresh = 100; //temporary
 	
 	int diag = (int)sqrt(w*w + h*h);
-	int * h_plane = calloc(diag * 180, sizeof(int));
-	printf("%d\n",diag * 180);
-	
-	char * lines = calloc(len,1); // sizeof(char) = 1
-	for(int i = 0; i < len; i++)
+	// angle range
+	int a_lr = 90;
+	// shifted angle range
+	int a_r = 180;
+	// [-diag,diag] into a 2 * diag array
+	int nlen = diag * a_r;
+	int * h_plane = calloc(nlen, sizeof(int));
+	//pre computation
+	double * coss = calloc(a_r,sizeof(double));
+	double * sins = calloc(a_r,sizeof(double));
+	for(int theta = -90 ; theta < a_lr; theta++)
 	{
-		if(pixels[i] > 0)
+		double t_rad = theta * (180./ PI);
+		coss[theta + a_lr] = cos(t_rad);
+		sins[theta + a_lr] = sin(t_rad);
+	}
+	printf("%d*%d  = %d ; %d \n",w,h,len,nlen);
+	
+	// In case it is needed to stock lines else where than in pixels 
+	//char * lines = calloc(len,1); // sizeof(char) = 1
+	for(int x = 0; x < h; x++)
+	{
+		for(int y = 0; y < w; y++)
 		{
-			int y = i / w;
-			int x = i - (y * w);
-			for(int theta = 0; theta < 180; theta += 5)
+			if(pixels[x*w + y] > 0)
 			{
-				double t_rad = theta * (180./ PI);
-				int rho = x * cos(t_rad) + y * sin(t_rad);
-				int p = rho*w + theta;
-				if(p >= 0 && p < diag * 180)
-					h_plane[p]++;
-			}
-		}	
+			//double y = i / w;
+			//double x = i - (y * w);
+				for(int theta = 0; theta < a_r; theta++)
+				{
+					int rho = (int)(x * coss[theta] + y * sins[theta]);
+					int p = (rho + diag)*w + theta;
+					if(p >= 0 && p < nlen)
+						h_plane[p]++;
+				}
+			}	
+			// clear image to see hough space
+			pixels[x*w + y] = 0;
+			printf("%d\n",x*w + y);
+		}
 	}
 
-	
-	for(int i = 0; i < diag * 180; i++)
+	for(int i = 0; i < nlen; i++)
 	{
+		printf("%d\n",i);
+		// Select pixels with treshold
+		// Extract lines
 		if(h_plane[i] > tresh)
 		{
 			int rho = i / w;
 			int theta = i - (rho * w);
 			int a;
 			if(theta != 0) // theta = 0 => Vertical line  
-				a = (-1)*(cos(theta)/sin(theta));
+				a = (-1)*(coss[theta]/sins[theta]);
 			else
 				a = 0;
-			int b = rho/sin(theta);
+			int b = rho/sins[theta];
 			// y = ax + b
-			for(int j = 0; j < w; i++)
+			// does the white line given by : y = ax + b; on the surface
+			// index j plays the x in the line equation : y = ax + b
+			for(int j = 0; j < w; j++)
 			{
 				if(j*a+b > 0 && j*a+b < len)
 					pixels[j*a+b] = 0xFFFFFF; 
 					// pixels goes white
 			}
-
 		}
 	}
+	// h_plane holds the hough space; the accumulator
 	// * lines holds the B&W bytes of the detected lines
 	free(h_plane);
-	free(lines);
+	free(coss);
+	free(sins);
+	//free(lines);
 	SDL_UnlockSurface(surface);
 	if(surface == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
@@ -1186,11 +1213,12 @@ int main(int argc, char** argv)
     for(int i = 0; i < NB_FILTER;i++)
     {
 	    surface_to_blur(sco);
+	    //surface_to_adaptive_treshold(sco,1);
     	    //surface_to_sobel(sco);
 	    //surface_to_grayscale(sco);
     	    //surface_to_invert(sco);
 	    //surface_to_BlackAndWhite(sco);
-	    //surface_to_canny(sco);
+	    surface_to_canny(sco);
 	    //surface_to_opening(sco);
 	    //for(int i = 0; i < 1;i++)
 	    //	surface_to_dilatation(sco);
@@ -1198,12 +1226,13 @@ int main(int argc, char** argv)
 	    //surface_to_erosion(sco);
 	    //surface_to_BlackAndWhite(sco);
 	    //surface_to_median(sco);
-	    surface_to_adaptive_treshold(sco,1);
+	    /*
 	    surface_to_resize(sco,252./1000.);
 	    SDL_Rect src = {0,0,252,252};
 	    SDL_Rect dst = {300,300,252,252};
 	    SDL_BlitSurface(sco,&src,sco,&dst);
-	    //surface_to_hough(sco);
+	    */
+	    surface_to_hough(sco);
 	    //surface_to_rotate(sco, 35);
 	    //surface_to_rotate_shear(sco, 35);
 	    //surface_to_resize_border(&sco,300,300);
