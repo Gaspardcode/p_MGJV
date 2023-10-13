@@ -184,7 +184,7 @@ void surface_to_hough(SDL_Surface * surface)
 	int len = w * h;
 	SDL_LockSurface(surface);
 
-	const int tresh = 100; //temporary
+	const int tresh = 600; //temporary
 	
 	int diag = (int)sqrt(w*w + h*h);
 	// angle range
@@ -218,7 +218,7 @@ void surface_to_hough(SDL_Surface * surface)
 				for(int theta = 0; theta < a_r; theta++)
 				{
 					int rho = (int)(x * coss[theta] + y * sins[theta]);
-					int p = (rho + diag)*w + theta;
+					int p = rho*diag + theta;
 					if(p >= 0 && p < nlen)
 						h_plane[p]++;
 				}
@@ -229,30 +229,47 @@ void surface_to_hough(SDL_Surface * surface)
 		}
 	}
 
+/*
+    	SDL_SetRenderDrawColor(r,255,255,255,255);
+    	SDL_RenderClear(r);
+    	SDL_SetRenderDrawColor(r,0,0,0,255);
+*/
 	for(int i = 0; i < nlen; i++)
 	{
-		printf("%d\n",i);
+		//printf("%d\n",i);
 		// Select pixels with treshold
 		// Extract lines
 		if(h_plane[i] > tresh)
 		{
-			int rho = i / w;
-			int theta = i - (rho * w);
+			int rho = i / diag;
+			int theta = i % diag;
 			int a;
-			if(theta != 0) // theta = 0 => Vertical line  
+			if(theta != 90) // theta = 0 => Vertical line  
 				a = (-1)*(coss[theta]/sins[theta]);
 			else
 				a = 0;
 			int b = rho/sins[theta];
+			//if(a < -27654335 || a > 27654335)
+			//	a = b = 0
 			// y = ax + b
+			printf("a:%d b:%d\n",a,b);
 			// does the white line given by : y = ax + b; on the surface
 			// index j plays the x in the line equation : y = ax + b
+			/*int x1 = 0;
+			int y1 = x1*a + b;
+			int x2 = w;
+			int y2 = x2*a + b;
+			printf("%d %d : %d %d",x1,y1,x2,y2);
+    			SDL_RenderDrawLine(r,x1,y1,x2,y2);
+			*/
 			for(int j = 0; j < w; j++)
 			{
-				if(j*a+b > 0 && j*a+b < len)
-					pixels[j*a+b] = 0xFFFFFF; 
+				int ind = j*w + (j*a + b);
+				if(ind >= 0 && ind < len)
+					pixels[ind] = 0xFFFFFF; 
 					// pixels goes white
 			}
+			
 		}
 	}
 	// h_plane holds the hough space; the accumulator
@@ -264,7 +281,6 @@ void surface_to_hough(SDL_Surface * surface)
 	SDL_UnlockSurface(surface);
 	if(surface == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
-
 }
 void surface_to_adaptive_treshold(SDL_Surface * surface, int size)
 {
@@ -1213,12 +1229,12 @@ int main(int argc, char** argv)
     for(int i = 0; i < NB_FILTER;i++)
     {
 	    surface_to_blur(sco);
-	    //surface_to_adaptive_treshold(sco,1);
+	    surface_to_adaptive_treshold(sco,1);
     	    //surface_to_sobel(sco);
 	    //surface_to_grayscale(sco);
     	    //surface_to_invert(sco);
 	    //surface_to_BlackAndWhite(sco);
-	    surface_to_canny(sco);
+	    //surface_to_canny(sco);
 	    //surface_to_opening(sco);
 	    //for(int i = 0; i < 1;i++)
 	    //	surface_to_dilatation(sco);
@@ -1259,7 +1275,13 @@ int main(int argc, char** argv)
     SDL_SetWindowSize(window, w, h);
 
     // - Create a new texture from the grayscale surface.
-    SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
+    /*
+     while(1)
+    {
+	    SDL_RenderPresent(renderer);
+    }
+    */
+      SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
 
     // - Free the surface.
     SDL_FreeSurface(sco);
@@ -1269,6 +1291,7 @@ int main(int argc, char** argv)
     event_loop(renderer, texture, t_gray);
 
     // - Destroy the objects.
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
