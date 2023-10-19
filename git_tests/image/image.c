@@ -336,7 +336,7 @@ void surface_to_hough(SDL_Surface * surface)
 			}
 		}
 	}
-
+/*
 	int ind = 0;
         for (int i = 0; i < 0 && nbline > 0; i++,nbline--)
         {
@@ -346,7 +346,7 @@ void surface_to_hough(SDL_Surface * surface)
                         (double)rhos[ind],coss[thetas[ind]],sins[thetas[ind]]);
         }
 	printf("Detected line(s) : %d\n",nbline);
-
+*/
 	// h_plane holds the hough space; the accumulator
 	free(val);
 	free(rhos);
