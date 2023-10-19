@@ -232,13 +232,13 @@ void surface_to_hough(SDL_Surface * surface)
 	SDL_LockSurface(surface);
 	
 	// shifted angle range
-	const int a_r = 360;
+	const int a_r = 180;
 	// angle range
 	const int diag = (int)sqrt(w*w + h*h);
 
 	// [-diag,diag] into a 2 * diag array
 
-	const int sizeR = diag;
+	const int sizeR = 2 * diag;
 	const int nlen = sizeR * a_r;
 	
 	int * h_plane = calloc(nlen, sizeof(int));
@@ -248,7 +248,7 @@ void surface_to_hough(SDL_Surface * surface)
 	double * sins = calloc(a_r,sizeof(double));
 	for(int theta = 0 ; theta < a_r; theta++)
 	{
-		double t_rad = (double)heta*(PI/180.);
+		double t_rad = (double)theta*(PI/180.);
 		coss[theta] = cos(t_rad);
 		sins[theta] = sin(t_rad);
 	}
@@ -266,7 +266,8 @@ void surface_to_hough(SDL_Surface * surface)
 				for(theta = 0; theta < a_r; theta += 1)
 				{
 					r = y*coss[theta] + x*sins[theta];
-					rho = (int)((r));///(double)diag)*(double)sizeR);
+					rho = (int)((r))+diag;
+					///(double)diag)*(double)sizeR);
 					p = rho*a_r + theta;
 					if(rho >= 0 && rho < sizeR && p >= 0 && p < nlen)
 					{
@@ -284,9 +285,9 @@ void surface_to_hough(SDL_Surface * surface)
 	const int tresh = (int)(0.5 * max); //temporary
 
 	int nbline = 0;
-	int * rhos = calloc(1000,sizeof(int));
-        int * thetas = calloc(1000,sizeof(int));
-        int * val = calloc(1000,sizeof(int));
+	//int * rhos = calloc(1000,sizeof(int));
+        //int * thetas = calloc(1000,sizeof(int));
+        //int * val = calloc(1000,sizeof(int));
 	for(int i = 1; i < sizeR-1 && nbline < 100; i++)
 	{
 		printf("i : %d\n",i);
@@ -305,7 +306,7 @@ void surface_to_hough(SDL_Surface * surface)
 			int dr = down + 1;
 			int v = 0;
 			if(ind < nlen)
-				v = h_plane[ind] + 1;
+				v = h_plane[ind] + 5;
 			if(v > tresh
 /*
 			&& up >= 0 && up < nlen 
@@ -330,9 +331,13 @@ void surface_to_hough(SDL_Surface * surface)
 				//rhos[nbline-1] = i;
 				//thetas[nbline-1] = theta;
 				//val[nbline-1] = h_plane[ind];
-				Draw_Polar_Line(surface,
-					(double)i,coss[theta],sins[theta]);
-				delete_k_neigh(h_plane,diag/20,i,theta,a_r,diag);
+				if(1)//(theta <= 100 && theta >= 80) || (theta >= -10 && theta <= 10))
+				{
+					
+						Draw_Polar_Line(surface,
+						(double)(i-diag),coss[theta],sins[theta]);
+				}
+				delete_k_neigh(h_plane,diag/20,i,theta,a_r,sizeR);
 			}
 		}
 	}
@@ -348,9 +353,9 @@ void surface_to_hough(SDL_Surface * surface)
 	printf("Detected line(s) : %d\n",nbline);
 */
 	// h_plane holds the hough space; the accumulator
-	free(val);
-	free(rhos);
-	free(thetas);
+	//free(val);
+	//free(rhos);
+	//free(thetas);
 	free(h_plane);
 	free(coss);
 	free(sins);
@@ -620,12 +625,12 @@ return (long double)(1./273.) * G;
 }
 int pixel_to_angle(Uint8* pixels)
 {
-double Gx = (1./9.) * convolution(pixels, sobel_Gx, MASK_LEN_SOBEL);
-double Gy = (1./9.) * convolution(pixels, sobel_Gy, MASK_LEN_SOBEL);
+	double Gx = (1./9.) * convolution(pixels, sobel_Gx, MASK_LEN_SOBEL);
+	double Gy = (1./9.) * convolution(pixels, sobel_Gy, MASK_LEN_SOBEL);
 
-double deg_convert = 180.000 / PI;
-double angle = atan2(Gy,Gx) * deg_convert;
-angle = (angle > 0) ? angle : (-1.0) * angle;
+	double deg_convert = 180.000 / PI;
+	double angle = atan2(Gy,Gx) * deg_convert;
+	angle = (angle > 0) ? angle : (-1.0) * angle;
 
 	// rounds the angle to four directions
 	// 0 - 45 - 90 - 135
@@ -1324,9 +1329,9 @@ int main(int argc, char** argv)
 	    //surface_to_adaptive_treshold(sco,1);
     	    //surface_to_sobel(sco);
 	    //surface_to_grayscale(sco);
-    	    //surface_to_invert(sco);
-	    //surface_to_BlackAndWhite(sco);
 	    //surface_to_canny(sco);
+	    //surface_to_BlackAndWhite(sco);
+    	    //surface_to_invert(sco);
 	    //surface_to_opening(sco);
 	    //for(int i = 0; i < 1;i++)
 	    //	surface_to_dilatation(sco);
@@ -1343,7 +1348,7 @@ int main(int argc, char** argv)
 	    //surface_to_rotate(sco, 35);
 	    //surface_to_rotate_shear(sco, 35);
 	    //surface_to_resize_border(&sco,300,300);
-            surface_to_hough(sco);
+	    surface_to_hough(sco);
 	    //RandomLines(sco,100);
 /* 
 	    unsigned char * bigger = calloc(w*h,1);
