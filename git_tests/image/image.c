@@ -183,7 +183,7 @@ void Draw_Polar_Line(SDL_Surface * surface, double r, double ct, double st)
 	int w = surface->w;
 	int h = surface->h;
 	int X,Y;
-	printf("Polar_Lines : rho : %lf theta :%lf\n",r,acos(ct));
+	printf("Polar_Lines : rho : %lf theta :%lf\n",r,(180./PI)*acos(ct));
 	SDL_LockSurface(surface);
 
 	for(x = 0; x < w; x+= 0.01)
@@ -223,7 +223,7 @@ void surface_to_hough(SDL_Surface * surface)
 	double * sins = calloc(a_r,sizeof(double));
 	for(int theta = 0 ; theta < a_r; theta++)
 	{
-		double t_rad = 2.0*PI*((double)theta/(double)a_r);
+		double t_rad = (double)theta*(PI/180.);
 		coss[theta] = cos(t_rad);
 		sins[theta] = sin(t_rad);
 	}
@@ -239,10 +239,10 @@ void surface_to_hough(SDL_Surface * surface)
 			if(pixels[x*w + y] > 0)
 			{
 				for(theta = 0; theta < a_r; theta += 1)
- 				{
-					r = y*coss[theta] + x * sins[theta];
-					rho = (int)((r/(double)diag)*(double)sizeR);
-					p = rho*sizeR + theta;
+				{
+					r = y*coss[theta] + x*sins[theta];
+					rho = (int)((r));///(double)diag)*(double)sizeR);
+					p = rho*360 + theta;
 					if(rho >= 0 && rho < sizeR && p >= 0 && p < nlen)
 					{
 						h_plane[p]++;
@@ -256,27 +256,31 @@ void surface_to_hough(SDL_Surface * surface)
 		}
 	}
 
-	const int tresh = (int)(0.5 * max); //temporary
+	const int tresh = (int)(0.7 * max); //temporary
 
 	int nbline = 0;
 	for(int i = 1; i < sizeR-1 && nbline < 100; i++)
 	{
+		printf("i : %d\n",i);
 		// Select local maxima with a treshold 
 		// Extract lines
 		for(theta = 1; theta < a_r -1;theta++)
 		{
-			int ind = i * sizeR + theta;
-			int up = ind - sizeR;
-			int down = ind + sizeR;
+			int ind = i * a_r  + theta;
+			int up = ind - a_r;
+			int down = ind + a_r;
 			int left = ind - 1;
 			int right = ind + 1;
 			int upr = up + 1;
 			int upl = up - 1;
 			int dl = down - 1;
 			int dr = down + 1;
-			int v = h_plane[ind];
+			int v = 0;
+			if(ind < nlen)
+				v = h_plane[ind] + 1;
 			if(v > tresh
-/*			&& up >= 0 && up < nlen 
+/*
+			&& up >= 0 && up < nlen 
 			&& down >= 0 && down < nlen
 			&& left >= 0 && left < nlen
 			&& right >= 0 && right < nlen
@@ -284,15 +288,19 @@ void surface_to_hough(SDL_Surface * surface)
 			&& upr >= 0 && upr < nlen
 			&& dl >= 0 && dl < nlen
 			&& dr >= 0 && dr < nlen
-*/	
+*/
 			&& v >= h_plane[up] && v >= h_plane[down]
 			&& v >= h_plane[left] && v >= h_plane[right]
-			&& v >= h_plane[upl] && v >= h_plane[upr]						   && v >= h_plane[dl] && v >= h_plane[dr])
+			&& v >= h_plane[upl] && v >= h_plane[upr]
+			&& v >= h_plane[dl] && v >= h_plane[dr])
+  
 			{
 				nbline++;
-				r = diag*((double)i/(double)sizeR); 
+				//r = h*i/diag; //((double)i/(double)sizeR);
+				//int t = w*theta/a_r;
+				//int resized = r * w + t;
 				Draw_Polar_Line(surface,
-					(double)r,coss[theta],sins[theta]);
+					(double)i,coss[theta],sins[theta]);
 			}
 		}
 	}
@@ -418,10 +426,10 @@ void surface_to_dilatation(SDL_Surface * surface)
 	// does not trigger the loop if erode[i] is 0
 		for(int u = -1 ; u < 2 && !erode[i] ; u++)
 		{
-			for(int bias = -1; bias < 2 && !erode[i]; bias++)
-			{
-				int j = i + u * w + bias;
-				if(j >= 0 && j < len)
+		for(int bias = -1; bias < 2 && !erode[i]; bias++)
+		{
+			int j = i + u * w + bias;
+			if(j >= 0 && j < len)
 	//pixels[j] stands for : there is a white pixel in the neighbours
 					erode[i] = pixels[j] ? 0xFFFFFF : BLACK;
 			}
