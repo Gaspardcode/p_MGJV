@@ -11,8 +11,10 @@
 #define NB_FILTER 1
 #define BNW 0
 #define MASK_LEN_SOBEL 9
-#define MASK_LEN_GAUSS 25 
-#define PI 3.14159265
+#define MASK_LEN_GAUSS_5 25 
+#define MASK_LEN_GAUSS_7 49 
+#define KERNEL_SIZE 2 
+#define PI 3.141592653589793238462
 void surface_to_resize(SDL_Surface * surface, const double scale)
 { 
 	// downsize only
@@ -51,15 +53,6 @@ void surface_to_resize(SDL_Surface * surface, const double scale)
 }
 void surface_to_resize_border(SDL_Surface ** surface, const int nw, const int nh)
 {
-	/*
-	Uint32 flags = (*surface)->flags;
-	SDL_Format format = (*surface)->format;
-	int depth = format->BitsPerPixel;
-	SDL_Surface *surf = SDL_CreateRGBSurface(flags,nw,nh,depth,0,0,0,0);
-	SDL_Rect crop = {0,0,nw,nh};
-	SDL_BlitSurface(*surface,&crop,surf,0);
-	*/
-	//SDL_Surface *surf = SDL_CreateRGBSurface(0,w,h,32,0,0,0,0);
 	Uint32* pixels = (*surface)->pixels;
 
 	int * pix = calloc(nw*nh,8);
@@ -83,9 +76,7 @@ void surface_to_rotate_shear(SDL_Surface * surface, const int theta)
 	const double r_t = (double)theta * (PI/180.);
 	double t = tan(r_t/2.);
 	double s = sin(r_t);
-	//double c = cos(r_t);
-	//int nw = abs((int)(w*c)) + abs((int)(h*s));
-	//int nh = abs((int)(h*c)) + abs((int)(w*s));
+	printf("rotated img by : %d°\n",theta);
 	SDL_LockSurface(surface);
 	unsigned char * bigger = calloc(len,1);//sizeof(char) = 1
 	for(int i = 0; i < len; i++)
@@ -103,16 +94,6 @@ void surface_to_rotate_shear(SDL_Surface * surface, const int theta)
 				bigger[nx*w + ny] = 0xFF;
 		}
 	}
-	/*
-	SDL_UnlockSurface(surface);
-	SDL_FreeSurface(surface);
-	free(pixels);
-
-	surface = SDL_CreateRGBSurface(0,nw,nh,32,0,0,0,0);
-	pixels = surface->pixels;
-	
-	SDL_LockSurface(surface);
-	*/
 	for(int i = 0; i < len; i++)
 		pixels[i] = (bigger[i] > 0) ? 0xFFFFFFFF : 0;
 	SDL_UnlockSurface(surface);
@@ -194,15 +175,40 @@ void Draw_Polar_Line(SDL_Surface * surface, double r, double ct, double st)
 	int w = surface->w;
 	int h = surface->h;
 	int X,Y;
-	printf("Polar_Lines : rho : %lf theta :%lf\n",r,(180./PI)*acos(ct));
+	if(st == 0)
+		st = 0.001 ;
+	//printf("Line : rho : %lf theta : %lf\n",r,ct);//acos(ct)*180/PI);
 	SDL_LockSurface(surface);
 
-	for(x = 0; x < w; x+= 0.01)
+	// x += 0.001 peut être diminué pour de l'opti
+	for(x = 0; x < w; x+= 0.001)
 	{
 		y = (r/st)-x*(ct/st);
 		X = (int)x;
 		Y = (int)y;
 		if( X >= 0 && X < w && Y >= 0 && Y < h)
+			pixels[Y*w+X] = 0xFFFFFF;
+	}
+
+	SDL_UnlockSurface(surface);
+
+}
+void Draw_Line(SDL_Surface * surface, double m, double b)
+{
+	double x,y;
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int X,Y;
+	printf("Line : m : %lf b :%lf\n",m,b);
+	SDL_LockSurface(surface);
+
+	for(x = 0; x < w; x+= 0.01)
+	{
+		y = x*m + b;
+		X = (int)x;
+		Y = (int)y;
+		if(X >= 0 && X < w && Y >= 0 && Y < h)
 			pixels[Y*w+X] = 0xFFFFFF;
 	}
 
@@ -223,12 +229,12 @@ void delete_k_neigh(int * arr, int k, int rho, int theta ,int w, int h)
 		}
 	}
 }
-void surface_to_hough(SDL_Surface * surface)
+void surface_to_hough(SDL_Surface * surface, int * min_theta)
 {
 	Uint32* pixels = surface->pixels;
 	const int w = surface->w;
 	const int h = surface->h;
-	const int len = w * h;
+	//const int len = w * h;
 	SDL_LockSurface(surface);
 	
 	// shifted angle range
@@ -252,8 +258,9 @@ void surface_to_hough(SDL_Surface * surface)
 		coss[theta] = cos(t_rad);
 		sins[theta] = sin(t_rad);
 	}
-	printf("%d*%d  = %d ; %d \n",w,h,len,nlen);
+	//printf("%d*%d  = %d ; %d \n",w,h,len,nlen);
 	int max = 0;
+	*min_theta = 180;
 	int rho, theta, p;
 	double r;
 
@@ -267,7 +274,6 @@ void surface_to_hough(SDL_Surface * surface)
 				{
 					r = y*coss[theta] + x*sins[theta];
 					rho = (int)((r))+diag;
-					///(double)diag)*(double)sizeR);
 					p = rho*a_r + theta;
 					if(rho >= 0 && rho < sizeR && p >= 0 && p < nlen)
 					{
@@ -282,18 +288,51 @@ void surface_to_hough(SDL_Surface * surface)
 		}
 	}
 
-	const int tresh = (int)(0.5 * max); //temporary
+	const int tresh = (int)(0.6 * max); //temporary
 
+/*
+    double normalize(double min, double max, double val)
+{
+    return (val-min)/(max-min);
+}
+
+*/
+
+/*
+   for(int h = -diag; h<diag; h++)
+    {
+        for(int w = 0; w<180; w++)
+        {
+            if(normalize(min, max, h_plane[h+diag][w]) >= threshold)
+            {
+                double cosT = cos(w * (M_PI / 180));
+                double sinT = sin(w * (M_PI / 180)); 
+
+                int x0 = h*cosT;
+                int y0 = h*sinT;
+                int x1 = x0 + diag * (-sinT);
+                int y1 = y0 + diag * cosT;
+                int x2 = x0 - diag * (-sinT);
+                int y2 = y0 - diag * cosT; 
+
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+
+                SDL_RenderDrawLine(renderer, x1,y1,x2,y2);
+            }
+        }
+    }
+*/
 	int nbline = 0;
-	//int * rhos = calloc(1000,sizeof(int));
-        //int * thetas = calloc(1000,sizeof(int));
-        //int * val = calloc(1000,sizeof(int));
-	for(int i = 1; i < sizeR-1 && nbline < 100; i++)
+/*
+	int * rhos = calloc(1000,sizeof(int));
+        int * thetas = calloc(1000,sizeof(int));
+        int * val = calloc(1000,sizeof(int));
+*/
+	for(int i = 1; i < sizeR-1 && nbline < 30; i++)
 	{
-		printf("i : %d\n",i);
 		// Select local maxima with a treshold 
 		// Extract lines
-		for(theta = 1; theta < a_r -1;theta++)
+		for(theta = 0; theta < a_r ;theta++)
 		{
 			int ind = i * a_r  + theta;
 			int up = ind - a_r;
@@ -306,9 +345,9 @@ void surface_to_hough(SDL_Surface * surface)
 			int dr = down + 1;
 			int v = 0;
 			if(ind < nlen)
-				v = h_plane[ind] + 5;
+				v = h_plane[ind]-1;
 			if(v > tresh
-/*
+
 			&& up >= 0 && up < nlen 
 			&& down >= 0 && down < nlen
 			&& left >= 0 && left < nlen
@@ -317,7 +356,7 @@ void surface_to_hough(SDL_Surface * surface)
 			&& upr >= 0 && upr < nlen
 			&& dl >= 0 && dl < nlen
 			&& dr >= 0 && dr < nlen
-*/
+
 			&& v >= h_plane[up] && v >= h_plane[down]
 			&& v >= h_plane[left] && v >= h_plane[right]
 			&& v >= h_plane[upl] && v >= h_plane[upr]
@@ -325,41 +364,212 @@ void surface_to_hough(SDL_Surface * surface)
   
 			{
 				nbline++;
-				//r = w*i/diag; //((double)i/(double)sizeR);
-				//int t = h*theta/a_r;
-				//int resized = r * w + t;
-				//rhos[nbline-1] = i;
-				//thetas[nbline-1] = theta;
-				//val[nbline-1] = h_plane[ind];
-				if(1)//(theta <= 100 && theta >= 80) || (theta >= -10 && theta <= 10))
+				if((theta <= 35 || theta >= 55) && (theta <= 120 || theta >= 150))
+//((theta <= 100 && theta >= 80) || (theta >= -10 && theta <= 10))
 				{
-					
-						Draw_Polar_Line(surface,
-						(double)(i-diag),coss[theta],sins[theta]);
+/*
+					rhos[nbline-1] = i - diag;
+					thetas[nbline-1] = theta;
+					val[nbline-1] = v;
+*/
+					if(theta < *min_theta)
+						*min_theta = theta;
+					Draw_Polar_Line(surface,
+					(double)(i-diag),coss[theta],sins[theta]);
 				}
 				delete_k_neigh(h_plane,diag/20,i,theta,a_r,sizeR);
 			}
 		}
 	}
+
+	printf("Detected line(s) : %d\n",nbline);
+	printf("Angle of rotation detected : %d\n",*min_theta);
 /*
+	printf("Detected line(s) : %d\n",nbline);
+
 	int ind = 0;
-        for (int i = 0; i < 0 && nbline > 0; i++,nbline--)
+        for (int i = 0; i < 1 && nbline > 0; i++,nbline--)
         {
                 ind = max_arr(val,1000);
                 val[ind] = 0;
                 Draw_Polar_Line(surface,
                         (double)rhos[ind],coss[thetas[ind]],sins[thetas[ind]]);
         }
-	printf("Detected line(s) : %d\n",nbline);
-*/
+
 	// h_plane holds the hough space; the accumulator
-	//free(val);
-	//free(rhos);
-	//free(thetas);
+	free(val);
+	free(rhos);
+	free(thetas);
+*/
 	free(h_plane);
 	free(coss);
 	free(sins);
-	//free(lines);
+	SDL_UnlockSurface(surface);
+	if(surface == NULL)
+        	errx(EXIT_FAILURE,"%s", SDL_GetError());
+}
+
+void surface_to_grid(SDL_Surface * surface)
+{
+	Uint32* pixels = surface->pixels;
+	const int w = surface->w;
+	const int h = surface->h;
+	SDL_LockSurface(surface);
+	
+	// shifted angle range
+	const int a_r = 180;
+	// angle range
+	const int diag = (int)sqrt(w*w + h*h);
+
+	// [-diag,diag] into a 2 * diag array
+	const int sizeR = 2 * diag;
+	const int nlen = sizeR * a_r;
+	int * h_plane = calloc(nlen, sizeof(int));
+	
+	//pre computation
+	double * coss = calloc(a_r,sizeof(double));
+	double * sins = calloc(a_r,sizeof(double));
+	for(int theta = 0 ; theta < a_r; theta++)
+	{
+		double t_rad = (double)theta*(PI/180.);
+		coss[theta] = cos(t_rad);
+		sins[theta] = sin(t_rad);
+	}
+
+	int max = 0;
+	int rho, theta, p;
+	double r;
+
+	for(int x = 0; x < h; x++)
+	{
+		for(int y = 0; y < w; y++)
+		{
+			if(pixels[x*w + y] > 0)
+			{
+				for(theta = 0; theta < a_r; theta += 1)
+				{
+					r = y*coss[theta] + x*sins[theta];
+					rho = (int)((r))+diag;
+					p = rho*a_r + theta;
+					if(rho >= 0 && rho < sizeR && p >= 0 && p < nlen)
+					{
+						h_plane[p]++;
+						if(h_plane[p] > max)
+							max = h_plane[p];
+					}
+				}
+			}	
+			// clear image to see hough space
+			pixels[x*w + y] = 0;
+		}
+	}
+
+	const int tresh = (int)(0.6 * max); //temporary
+	int nbline = 0;
+	int min_max[2] = {999999,0};
+	int min_min[2] = {999999,999};
+	int max_min[2] = {0,180};
+	int max_max[2] = {0,0};
+/*
+	int * rhos = calloc(1000,sizeof(int));
+        int * thetas = calloc(1000,sizeof(int));
+        int * val = calloc(1000,sizeof(int));
+*/
+	for(int i = 1; i < sizeR-1 && nbline < 30; i++)
+	{
+		// Select local maxima with a treshold 
+		// Extract lines
+		for(theta = 0; theta < a_r ;theta++)
+		{
+			int ind = i * a_r  + theta;
+			int up = ind - a_r;
+			int down = ind + a_r;
+			int left = ind - 1;
+			int right = ind + 1;
+			int upr = up + 1;
+			int upl = up - 1;
+			int dl = down - 1;
+			int dr = down + 1;
+			int v = 0;
+			if(ind < nlen)
+				v = h_plane[ind]-1;
+			if(v > tresh
+
+			&& up >= 0 && up < nlen 
+			&& down >= 0 && down < nlen
+			&& left >= 0 && left < nlen
+			&& right >= 0 && right < nlen
+			&& upl >= 0 && upl < nlen
+			&& upr >= 0 && upr < nlen
+			&& dl >= 0 && dl < nlen
+			&& dr >= 0 && dr < nlen
+
+			&& v >= h_plane[up] && v >= h_plane[down]
+			&& v >= h_plane[left] && v >= h_plane[right]
+			&& v >= h_plane[upl] && v >= h_plane[upr]
+			&& v >= h_plane[dl] && v >= h_plane[dr])
+  
+			{
+				nbline++;
+				if((theta <= 35 || theta >= 55) && (theta <= 120 || theta >= 150))
+				{
+/*
+					rhos[nbline-1] = i - diag;
+					thetas[nbline-1] = theta;
+					val[nbline-1] = v;
+*/
+					rho = i - diag;
+					if(rho < min_min[0] && theta < min_min[1])
+					{
+						min_min[0] = rho;
+						min_min[1] = theta;
+					}
+					else if(rho < min_max[0] && theta > min_max[1])
+					{
+						min_max[0] = rho;
+						min_max[1] = theta;
+					}
+					else if(rho > max_min[0] && theta < max_min[1])
+					{
+						max_min[0] = rho;
+						max_min[1] = theta;
+					}
+					else if(rho > max_max[0] && theta > max_max[1])
+					{
+						max_max[0] = rho;
+						max_max[1] = theta;
+					}
+				}
+				delete_k_neigh(h_plane,diag/20,i,theta,a_r,sizeR);
+			}
+		}
+	}
+
+	Draw_Polar_Line(surface,(double)min_max[0],coss[min_max[1]],sins[min_max[1]]);
+	Draw_Polar_Line(surface,(double)max_min[0],coss[max_min[1]],sins[max_min[1]]);
+	Draw_Polar_Line(surface,(double)min_min[0],coss[min_min[1]],sins[min_min[1]]);
+	Draw_Polar_Line(surface,(double)max_max[0],coss[max_max[1]],sins[max_max[1]]);
+	printf("Detected line(s) : %d\n",nbline);
+/*
+	printf("Detected line(s) : %d\n",nbline);
+
+	int ind = 0;
+        for (int i = 0; i < 1 && nbline > 0; i++,nbline--)
+        {
+                ind = max_arr(val,1000);
+                val[ind] = 0;
+                Draw_Polar_Line(surface,
+                        (double)rhos[ind],coss[thetas[ind]],sins[thetas[ind]]);
+        }
+
+	// h_plane holds the hough space; the accumulator
+	free(val);
+	free(rhos);
+	free(thetas);
+*/
+	free(h_plane);
+	free(coss);
+	free(sins);
 	SDL_UnlockSurface(surface);
 	if(surface == NULL)
         	errx(EXIT_FAILURE,"%s", SDL_GetError());
@@ -374,7 +584,7 @@ void RandomLines(SDL_Surface * surface, int n)
 	{
 		int x = i*i*i;
 		rho = (int)(x*sqrt(w*w+h*h)) % w;
-		theta = 2.0*PI*random();
+		theta = 2.0*PI*8;
 		printf("rho: %lf theta: %lf  %d\n",rho,theta,x);
 		Draw_Polar_Line(surface, rho, cos(theta), sin(theta));
 	}	
@@ -600,42 +810,70 @@ int Gaussian[25] = {   2,   4,   5,  4, 2,
                       4,   9,  12,  9, 4,
 		      2,   4,   5,  4, 2    };
 // Gaussian blur mask 5x5
-int Gaussian_sigma_one[25] = {   1,    4,   7,   4, 1,
+int Gaussian_by_five[25] = {   1,    4,   7,   4, 1,
                       		 4,   16,  26,  16, 4,
                       		 7,   26,  41,  26, 7,
                       		 4,   16,  26,  16, 4,
 		      		 1,    4,   7,   4, 1    };
+// Gaussian blur mask 7x7
+int Gaussian_by_seven[49] = {   0,    0,   1,   2,  1,  0, 0,
+                      		 0,    3,  13,  22, 13,  3, 0,
+                      		 1,   13,  59,  97, 59, 13, 1,
+                      		 2,   22,  97, 159, 97, 22, 2,
+		      		 1,   13,  59,  97, 59, 13 ,1, 
+		      		 0,    3,  13,  22, 13,  3 ,0,
+		      		 0,    0,   1,   2,  1,  0 ,0    };
+
 
 
 double convolution(Uint8* pixels, int *mask, int len)
 {
 	double convol = 0;
 	
-for(int i = 0; i < len; i++)
-	convol += mask[i] * (double)pixels[i];
+	for(int i = 0; i < len; i++)
+		convol += mask[i] * (double)pixels[i];
 
-return convol;
+	return convol;
 }
-double pixel_to_blur(Uint8* pixels)
+double pixel_to_blur(Uint8* pixels, int mask)
 {
-double G = convolution(pixels, Gaussian_sigma_one, MASK_LEN_GAUSS);
 
-//return (long double)(1./159.) * G;
-return (long double)(1./273.) * G;
+	double G, f;
+	switch(mask)
+	{
+		case 5:
+			G = convolution(pixels, Gaussian_by_five,mask*mask); 
+			f = 1./273.; 
+			break;
+		case 7:
+			G = convolution(pixels, Gaussian_by_seven, mask*mask);
+			f = 1./1003.; 
+			break;
+		default:
+			G = convolution(pixels, Gaussian_by_five, mask*mask);
+			f = 1./273.; 
+			break;
+	}
+
+	return f * G;
 }
 int pixel_to_angle(Uint8* pixels)
 {
 	double Gx = (1./9.) * convolution(pixels, sobel_Gx, MASK_LEN_SOBEL);
 	double Gy = (1./9.) * convolution(pixels, sobel_Gy, MASK_LEN_SOBEL);
 
+	if(Gx < 0)
+		Gx *= (-1.);
+	if(Gy < 0)
+		Gy *= (-1.);
 	double deg_convert = 180.000 / PI;
 	double angle = atan2(Gy,Gx) * deg_convert;
-	angle = (angle > 0) ? angle : (-1.0) * angle;
+	angle = (angle > 0) ? angle : angle + 90;
 
 	// rounds the angle to four directions
 	// 0 - 45 - 90 - 135
 	double r_angle ;
-
+/*
 	if(angle >= 0.000 && angle < 22.500)
 		r_angle = 0;
 	if(angle >= 157.500 && angle < 180.000)
@@ -646,7 +884,21 @@ int pixel_to_angle(Uint8* pixels)
 		r_angle = 90;
 	else
 		r_angle = 135;
-
+*/
+	if(angle >= -22.500 && angle < 22.500)
+		r_angle = 0;
+	if(angle >= 157.500 && angle < 202.500)
+		r_angle = 0;
+	if(angle >= 22.500 && angle < 67.500)
+		r_angle = 45;	
+	if(angle >= 202.500 && angle < 247.500)
+		r_angle = 45;	
+	if(angle >= 67.500 && angle < 112.500)
+		r_angle = 90;
+	if(angle >= 247.5 && angle < 292.500)
+		r_angle = 90;
+	else
+		r_angle = 135;
 	return r_angle;
 }
 double sobel_magnitude(Uint8* pixels)
@@ -656,12 +908,14 @@ double sobel_magnitude(Uint8* pixels)
 
 	return (sqrt(Gx*Gx + Gy*Gy));
 }
-void surface_to_blur(SDL_Surface * surface)
+void surface_to_blur(SDL_Surface * surface, int size)
 {
+	//kernel of size : (2*size)+1
 	Uint32* pixels = surface->pixels;
 	int w = surface->w;
 	int h = surface->h;
 	int len = w * h;
+	int mask = 2*size+1;
 	SDL_PixelFormat* format = surface->format;
 	SDL_LockSurface(surface);
 	
@@ -678,11 +932,11 @@ void surface_to_blur(SDL_Surface * surface)
 	// computes gaussian noise filter
 	for(int i = 0; i < len; i++)
 	{
-		Uint8 neighb[25];
+		Uint8 neighb[mask*mask];
 		int k = 0;
-		for(int u = -2 ; u < 3 ; u++)
+		for(int u = -size ; u < size+1 ; u++)
 		{
-			for(int bias = -2; bias < 3; bias++)
+			for(int bias = -size; bias < size+1; bias++)
 			{
 				int j = i + u * w + bias;
 				if(j >= 0 && j < len)
@@ -692,7 +946,7 @@ void surface_to_blur(SDL_Surface * surface)
 				k++;
 			}
 		}
-		grayscale[i] = (unsigned int)(pixel_to_blur(neighb));
+		grayscale[i] = (unsigned int)(pixel_to_blur(neighb, mask));
 	}
 
 	for(int i = 0; i < len ; i++)
@@ -708,13 +962,12 @@ void surface_to_blur(SDL_Surface * surface)
 void surface_to_canny(SDL_Surface * surface)
 {
 	// Applies a Gaussian filter to reduce noise
-	surface_to_blur(surface);
+	surface_to_blur(surface,KERNEL_SIZE);
 
 	Uint32* pixels = surface->pixels;
 	int w = surface->w;
 	int h = surface->h;
 	int len = w * h;
-	SDL_PixelFormat* format = surface->format;
 	SDL_LockSurface(surface);
 
 	double* sob_m = (double*)malloc(len * sizeof(double));
@@ -753,8 +1006,8 @@ void surface_to_canny(SDL_Surface * surface)
 	
 	// Angle selection according to the magnitude of neighb pixels
 	// At the same time Double Treshold
-	int low_tresh = 0;
-	int high_tresh = 100;
+	int low_tresh = 20;
+	int high_tresh = 80;
 	for(int i = 0; i < len ; i++)
 	{
 		if(sob_a[i] == 0)
@@ -838,8 +1091,11 @@ void surface_to_canny(SDL_Surface * surface)
 	// Final surface filling
 	for(int i = 0; i < len ; i++)
 	{
-		Uint32 color = SDL_MapRGB(format, sob[i], sob[i],sob[i]);
-		pixels[i] = color;
+		//Uint32 color = SDL_MapRGB(format, sob[i], sob[i],sob[i]);
+		if(sob[i] > 0)
+			pixels[i] = 0xFFFFFFFF;
+		else
+			pixels[i] = 0;
 	}
 
 	free(sob);
@@ -1291,8 +1547,8 @@ void surface_to_grayscale(SDL_Surface * surface)
 int main(int argc, char** argv)
 {
     // Checks the number of arguments.
-    if (argc != 2)
-        errx(EXIT_FAILURE, "Usage: image-file");
+    if (argc < 3)
+        errx(EXIT_FAILURE, "Usage: image-file-test- OPTIONAL : degree");
 
    // Initializes the SDL.
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
@@ -1309,77 +1565,116 @@ int main(int argc, char** argv)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // - Create a surface from the colored image.
-    SDL_Surface* sco = load_image(argv[1]);
-    //SDL_Surface* rot;
-
-        // - Create a texture from the colored surface.
+    	SDL_Surface* sco;
+	printf("Sample image : image_0%d.jpeg\n",argv[1][0]- '0');
+    	switch(argv[1][0] - '0')
+	{
+		case 1:
+    			sco = load_image("../imgs/image_01.jpeg");
+			break;
+		case 2:
+    			sco = load_image("../imgs/image_02.jpeg");
+			break;
+		case 3:
+    			sco = load_image("../imgs/image_03.jpeg");
+			break;
+		case 4:
+    			sco = load_image("../imgs/image_04.jpeg");
+			break;
+		case 5:
+    			sco = load_image("../imgs/image_05.jpeg");
+			break;
+		case 6:
+    			sco = load_image("../imgs/image_06.jpeg");
+			break;
+		case 7:
+    			sco = load_image("../imgs/rot_sudok.png");
+			break;
+		case 8:
+    			sco = load_image("../imgs/lines.png");
+			break;
+		case 9:
+    			sco = load_image("../imgs/canny_sudok.jpg");
+			break;
+		default:
+    			sco = load_image(argv[1]);
+			break;
+	}
+    // - Create a texture from the colored surface.
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, sco);
 
     if (texture == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
-    // - Convert the surface into grayscale.
-    if (BNW)
-	    surface_to_BlackAndWhite(sco);
-    if (BLACK)
-	    surface_to_normalize(sco);
-    for(int i = 0; i < NB_FILTER;i++)
+    int angle = 0;
+    int j = 1;
+    if(argc > 3)
+	    for(int i = 0; argv[3][i] != 0; i++, j *= 10)
+		angle = angle * 10  + argv[3][i] - '0'; 
+    int swich = (int)argv[2][0] - '0';
+    printf("%s ","calling function");
+    switch(swich)
     {
-	    //surface_to_blur(sco);
-	    //surface_to_adaptive_treshold(sco,1);
-    	    //surface_to_sobel(sco);
-	    //surface_to_grayscale(sco);
-	    //surface_to_canny(sco);
-	    //surface_to_BlackAndWhite(sco);
-    	    //surface_to_invert(sco);
-	    //surface_to_opening(sco);
-	    //for(int i = 0; i < 1;i++)
-	    //	surface_to_dilatation(sco);
-	    //surface_to_closing(sco);
-	    //surface_to_erosion(sco);
-	    //surface_to_BlackAndWhite(sco);
-	    //surface_to_median(sco);
-	    /*
-	    surface_to_resize(sco,252./1000.);
-	    SDL_Rect src = {0,0,252,252};
-	    SDL_Rect dst = {300,300,252,252};
-	    SDL_BlitSurface(sco,&src,sco,&dst);
-	    */
-	    //surface_to_rotate(sco, 35);
-	    //surface_to_rotate_shear(sco, 35);
-	    //surface_to_resize_border(&sco,300,300);
-	    surface_to_hough(sco);
-	    //RandomLines(sco,100);
-/* 
-	    unsigned char * bigger = calloc(w*h,1);
-	    for(int i = 0; i < w*h; i++)
-		    bigger[i] = 0xFE;
-	    for(int i = 0; i < 0; i++)
-		    bigger[i] = 35;
-	    sco = SDL_ConvertSurfaceFormat(sco, SDL_PIXELTYPE_ARRAYU8,0);
-	    sco = SDL_CreateRGBSurfaceFrom(bigger,w,h,8,w,0,0,0,0);
-	    free(bigger);
-  	   if(sco->format->BitsPerPixel!=8)
-        		errx(EXIT_FAILURE, "not 8 bits per pixel");
-  	   if(sco->format->palette == NULL)
-        		errx(EXIT_FAILURE, "not 8 bits per pixel");
-	   printf("%d\n",sco->format->palette->ncolors);
-*/
-    }
-    
-    int w = sco->w;
-    int h = sco->h;
+	    case 0:
+		    if(argc > 3)
+		    {
+    		        printf("%s\n","Median filter");
+	    		surface_to_median(sco);
+		    }
+		    else
+		    {
+    		        printf("%s\n","Gaussian blur");
+	    		surface_to_blur(sco, KERNEL_SIZE);
+		    }
+		    break;
+	    case 1:
+		    if(argc > 3)
+		    {
+    			printf("%s\n","Otsu's binarisation");
+	    		surface_to_BlackAndWhite(sco);
+		    }
+		    else
+		    {
+    			printf("%s\n","Adaptive binarisation");
+			surface_to_adaptive_treshold(sco,1);
+		    }
+		break;
+	    case 2:
+    		printf("%s\n","Canny Edge");
+	   	surface_to_canny(sco);
+		break;
+	    case 3:
+    		printf("%s\n","Hough Transform");
+	   	surface_to_canny(sco);
+	    	surface_to_hough(sco,&angle);
+    	    	break;
+	    case 4:
+    		printf("%s %d degrees\n","Rotation from",angle);
+	   	surface_to_canny(sco);
+	    	surface_to_rotate_shear(sco, angle);
+		break;
+	    case 5:
+    		printf("%s \n","Grid detection");
+	   	surface_to_canny(sco);
+		surface_to_grid(sco);
+    	    	//surface_to_invert(sco);
+	    	//surface_to_opening(sco);
+	    	//surface_to_dilatation(sco);
+	    	//surface_to_closing(sco);
+	    	//surface_to_erosion(sco);
+	        //RandomLines(sco,100);
+		break;
+	} 
+
+    printf("%s\n","work done");
+
+    //int w = sco->w;
+    //int h = sco->h;
     // - Resize the window according to the size of the image.
-    SDL_SetWindowSize(window, w, h);
+    SDL_SetWindowSize(window, 1000, 1000);
 
     // - Create a new texture from the grayscale surface.
-/*   
-    for(int i = 0; i < 10000; i++) 
-    {
-	    SDL_RenderPresent(renderer);
-    }
-  */  
-      SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
+    SDL_Texture* t_gray = SDL_CreateTextureFromSurface(renderer, sco);
 
     // - Free the surface.
     SDL_FreeSurface(sco);
