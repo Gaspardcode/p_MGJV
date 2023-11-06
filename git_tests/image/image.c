@@ -15,6 +15,31 @@
 #define MASK_LEN_GAUSS_7 49 
 #define KERNEL_SIZE 2 
 #define PI 3.141592653589793238462
+int * integral_image(SDL_Surface * surface)
+{
+	Uint32* pixels = surface->pixels;
+	int w = surface->w;
+	int h = surface->h;
+	int len = w*h;
+	int* integral = calloc(len,sizeof(int));
+	integral[0] = pixels[0];
+	for(int i = 1; i < w; i++)
+		integral[i] = integral[i-1] + pixels[i];
+	for(int j = 1; j < h; j++)
+		integral[j*w] = integral[(j-1)*w] + pixels[j*w];
+	for(int i = 1; i < h; i++)
+		for(int j = 1; j < w; j++)
+		{
+			int ind = i*w + j;
+			int up = i - w;
+			int left = i - 1;
+			int ul = i - w - 1;
+			int val = pixels[ind];
+			integral[ind] = integral[up] + integral[left]
+				+ integral[ul] + val;
+		}
+	return integral;
+}
 void surface_to_resize(SDL_Surface * surface, const double scale)
 { 
 	// downsize only
