@@ -15,6 +15,31 @@
 #define MASK_LEN_GAUSS_7 49 
 #define KERNEL_SIZE 2 
 #define PI 3.141592653589793238462
+double * line_inter(double r1, double r2, double t1, double t2,
+		double a, double b)
+{
+	/*Cramer's method
+	int m1[4] = {r1, t1
+		     r2 t2};
+	int m2[4] = {a, t1
+		     b, t2 };
+	int m3[4] = {r1, a
+		     r2, b};
+	determinant solving*/
+
+	double d1 = r1*t2 - r2*t1;
+	double d2 = a*t2 - t1*b;
+	double d3 = r1*b - a*r2;
+	printf("d1:%lf d2:%lf d3:%lf\n",d1,d2,d3);
+	if(d1 == 0)
+		printf("lines are parallel\nstopping\n");
+	double x = d2/d1;
+	double y = d3/d1;
+	double * cood = malloc(2*sizeof(double));
+	cood[0] = x;
+	cood[1] = y;
+	return cood;
+}
 int * integral_image(SDL_Surface * surface)
 {
 	Uint32* pixels = surface->pixels;
@@ -216,7 +241,6 @@ void Draw_Polar_Line(SDL_Surface * surface, double r, double ct, double st)
 	}
 
 	SDL_UnlockSurface(surface);
-
 }
 void Draw_Line(SDL_Surface * surface, double m, double b)
 {
@@ -495,11 +519,7 @@ void surface_to_grid(SDL_Surface * surface)
 	int min_min[2] = {999999,999};
 	int max_min[2] = {0,180};
 	int max_max[2] = {0,0};
-/*
-	int * rhos = calloc(1000,sizeof(int));
-        int * thetas = calloc(1000,sizeof(int));
-        int * val = calloc(1000,sizeof(int));
-*/
+
 	for(int i = 1; i < sizeR-1 && nbline < 30; i++)
 	{
 		// Select local maxima with a treshold 
@@ -538,11 +558,6 @@ void surface_to_grid(SDL_Surface * surface)
 				nbline++;
 				if((theta <= 35 || theta >= 55) && (theta <= 120 || theta >= 150))
 				{
-/*
-					rhos[nbline-1] = i - diag;
-					thetas[nbline-1] = theta;
-					val[nbline-1] = v;
-*/
 					rho = i - diag;
 					if(rho < min_min[0] && theta < min_min[1])
 					{
@@ -570,28 +585,21 @@ void surface_to_grid(SDL_Surface * surface)
 		}
 	}
 
-	Draw_Polar_Line(surface,(double)min_max[0],coss[min_max[1]],sins[min_max[1]]);
+	Draw_Polar_Line(surface,(double)max_max[0]/2,coss[max_min[1]],sins[max_min[1]]);
 	Draw_Polar_Line(surface,(double)max_min[0],coss[max_min[1]],sins[max_min[1]]);
 	Draw_Polar_Line(surface,(double)min_min[0],coss[min_min[1]],sins[min_min[1]]);
 	Draw_Polar_Line(surface,(double)max_max[0],coss[max_max[1]],sins[max_max[1]]);
-	printf("Detected line(s) : %d\n",nbline);
-/*
+	printf(" line min_max:rho:  %d theta:%d\n",min_max[0],min_max[1]);
+	printf(" line max_min:rho:  %d theta:%d\n",max_min[0],max_min[1]);
+	printf(" line min min:rho:  %d theta:%d\n",min_min[0],max_min[1]);
+	printf(" line max max:rho:  %d theta:%d\n",max_max[0],max_max[1]);
 	printf("Detected line(s) : %d\n",nbline);
 
-	int ind = 0;
-        for (int i = 0; i < 1 && nbline > 0; i++,nbline--)
-        {
-                ind = max_arr(val,1000);
-                val[ind] = 0;
-                Draw_Polar_Line(surface,
-                        (double)rhos[ind],coss[thetas[ind]],sins[thetas[ind]]);
-        }
+//crop square grid from upper left corner
+//	SDL_Rect src = {ul,ur,side,side};
+//	SDL_Rect dst = {0,0,w,h};
+//	SDL_BlitSurface(sco,src,sco,dst);
 
-	// h_plane holds the hough space; the accumulator
-	free(val);
-	free(rhos);
-	free(thetas);
-*/
 	free(h_plane);
 	free(coss);
 	free(sins);
@@ -1688,6 +1696,10 @@ int main(int argc, char** argv)
 	    	//surface_to_closing(sco);
 	    	//surface_to_erosion(sco);
 	        //RandomLines(sco,100);
+		break;
+	    case 6:
+		double* cood = line_inter(-5,-2,5,-4,8,6);
+		printf("line intersection :%lf %lf\n",cood[0],cood[1]);
 		break;
 	} 
 
