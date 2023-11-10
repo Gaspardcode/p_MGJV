@@ -35,8 +35,8 @@ P * line_sect(L * line1, L * line2)
 	return &(line1->p1);
 }
 	*/
-double * line_inter(double r1, double r2, double t1, double t2,
-		double a, double b)
+int * line_inter(double a1, double a2, double b1, double b2,
+		double c1, double c2)
 {
 	/*Cramer's method
 	int m1[4] = {r1, t1
@@ -47,17 +47,17 @@ double * line_inter(double r1, double r2, double t1, double t2,
 		     r2, b};
 	determinant solving*/
 
-	double d1 = r1*t2 - r2*t1;
-	double d2 = a*t2 - t1*b;
-	double d3 = r1*b - a*r2;
+	double d1 = a1*b2 - a2*b1;
+	double d2 = c1*b2 - b1*c2;
+	double d3 = a1*c2 - c1*a2;
 	printf("d1:%lf d2:%lf d3:%lf\n",d1,d2,d3);
 	if(d1 == 0)
 		printf("lines are parallel\nstopping\n");
 	double x = d2/d1;
 	double y = d3/d1;
-	double * cood = malloc(2*sizeof(double));
-	cood[0] = x;
-	cood[1] = y;
+	int * cood = malloc(2*sizeof(int));
+	cood[0] = round(x);
+	cood[1] = round(y);
 	return cood;
 }
 int * integral_image(SDL_Surface * surface)
@@ -1719,8 +1719,8 @@ int main(int argc, char** argv)
 		break;
 	    case 6:
 		// x1 x2 y1 y2 a b
-		double* cood = line_inter(5.9,-6.98,5.6,-11.46,11.56,-13.54);
-		printf("line intersection :%lf %lf\n",cood[0],cood[1]);
+		int* cood = line_inter(5.9,-6.98,5.6,-11.46,11.56,-13.54);
+		printf("line intersection :%d %d\n",cood[0],cood[1]);
 		break;
 	} 
 
