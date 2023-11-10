@@ -15,6 +15,26 @@
 #define MASK_LEN_GAUSS_7 49 
 #define KERNEL_SIZE 2 
 #define PI 3.141592653589793238462
+typedef struct {
+	int x;
+	int y;
+}P;
+typedef struct {
+	P p1;
+	P p2;
+}L;
+	/*
+P * line_sect(L * line1, L * line2)
+{
+	//double r1 = (line1->p2.y - line1->p1.y) / (line1->p2.x - line1->p1.x);
+	//double r2 = (line2->p2.y - line2->p1.y) / (line2->p2.x - line2->p1.x);
+	double t1 = 
+	double t2 = ;
+	double a = ;
+	double b = ;
+	return &(line1->p1);
+}
+	*/
 double * line_inter(double r1, double r2, double t1, double t2,
 		double a, double b)
 {
@@ -1698,7 +1718,8 @@ int main(int argc, char** argv)
 	        //RandomLines(sco,100);
 		break;
 	    case 6:
-		double* cood = line_inter(-5,-2,5,-4,8,6);
+		// x1 x2 y1 y2 a b
+		double* cood = line_inter(5.9,-6.98,5.6,-11.46,11.56,-13.54);
 		printf("line intersection :%lf %lf\n",cood[0],cood[1]);
 		break;
 	} 
