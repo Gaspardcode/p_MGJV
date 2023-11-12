@@ -197,6 +197,160 @@ void sudoku_to_img(unsigned int * before, unsigned int * solved)
 	SDL_FreeSurface(G9);
 }
 
+void sudoku_to_all_steps_img(unsigned int * before, unsigned int * solved)
+{
+	int size = 100;
+	int x,y;
+	SDL_Surface * sco = IMG_Load("digits/blank.png");
+	if(sco == NULL)
+		printf("sco NULL\n");
+
+	//loading digits
+	SDL_Surface * B1 = IMG_Load("digits/1B.png");
+	SDL_Surface * G1 = IMG_Load("digits/1G.png");
+	SDL_Surface * B2 = IMG_Load("digits/2B.png");
+	SDL_Surface * G2 = IMG_Load("digits/2G.png");
+	SDL_Surface * B3 = IMG_Load("digits/3B.png");
+	SDL_Surface * G3 = IMG_Load("digits/3G.png");
+	SDL_Surface * B4 = IMG_Load("digits/4B.png");
+	SDL_Surface * G4 = IMG_Load("digits/4G.png");
+	SDL_Surface * B5 = IMG_Load("digits/5B.png");
+	SDL_Surface * G5 = IMG_Load("digits/5G.png");
+	SDL_Surface * B6 = IMG_Load("digits/6B.png");
+	SDL_Surface * G6 = IMG_Load("digits/6G.png");
+	SDL_Surface * B7 = IMG_Load("digits/7B.png");
+	SDL_Surface * G7 = IMG_Load("digits/7G.png");
+	SDL_Surface * B8 = IMG_Load("digits/8B.png");
+	SDL_Surface * G8 = IMG_Load("digits/8G.png");
+	SDL_Surface * B9 = IMG_Load("digits/9B.png");
+	SDL_Surface * G9 = IMG_Load("digits/9G.png");
+
+	int len = 81;
+	const SDL_Rect src = {0,0,size,size};
+	for(int i = 0; i < len;i++)
+	{
+		if(before[i] != 0)
+		{
+			// marking given digits
+			solved[i] = 0;
+			x = (i/9)*size;
+			y = (i%9)*size;
+
+			//cropping digit in the right spot
+			SDL_Rect dst = {x,y,size,size};
+			switch(before[i])
+			{
+				case 1:
+					SDL_BlitSurface(B1,&src,sco,&dst);
+					break;
+				case 2:
+					SDL_BlitSurface(B2,&src,sco,&dst);
+					break;
+				case 3:
+					SDL_BlitSurface(B3,&src,sco,&dst);
+					break;
+				case 4:
+					SDL_BlitSurface(B4,&src,sco,&dst);
+					break;
+				case 5:
+					SDL_BlitSurface(B5,&src,sco,&dst);
+					break;
+				case 6:
+					SDL_BlitSurface(B6,&src,sco,&dst);
+					break;
+				case 7:
+					SDL_BlitSurface(B7,&src,sco,&dst);
+					break;
+				case 8:
+					SDL_BlitSurface(B8,&src,sco,&dst);
+					break;
+				case 9:
+					SDL_BlitSurface(B9,&src,sco,&dst);
+					break;
+			}
+		}
+	}	
+
+	if(sco != NULL)
+		IMG_SavePNG(sco,"empty_grid.png");
+
+	char path[11] = "step__.png";
+	int step = 0;
+
+	//placing digits solved
+	for(int i = 0; i < len;i++)
+	{
+		//getting solved digits
+		if(solved[i] != 0)
+		{
+			step++;
+			x = (i/9)*size;
+			y = (i%9)*size;
+
+			//cropping digit in the right spot
+			SDL_Rect dst = {x,y,size,size};
+			switch(solved[i])
+			{
+				case 1:
+					SDL_BlitSurface(G1,&src,sco,&dst);
+					break;
+				case 2:
+					SDL_BlitSurface(G2,&src,sco,&dst);
+					break;
+				case 3:
+					SDL_BlitSurface(G3,&src,sco,&dst);
+					break;
+				case 4:
+					SDL_BlitSurface(G4,&src,sco,&dst);
+					break;
+				case 5:
+					SDL_BlitSurface(G5,&src,sco,&dst);
+					break;
+				case 6:
+					SDL_BlitSurface(G6,&src,sco,&dst);
+					break;
+				case 7:
+					SDL_BlitSurface(G7,&src,sco,&dst);
+					break;
+				case 8:
+					SDL_BlitSurface(G8,&src,sco,&dst);
+					break;
+				case 9:
+					SDL_BlitSurface(G9,&src,sco,&dst);
+					break;
+			}
+			//saving step by step solution
+			path[4] = step / 10 + '0';
+ 			path[5] = step % 10 + '0';
+			if(sco != NULL)
+				IMG_SavePNG(sco,path);
+		}
+	}	
+	
+	//save img
+	if(sco != NULL)
+		IMG_SavePNG(sco,"result.png");
+	SDL_FreeSurface(sco);
+	SDL_FreeSurface(B1);
+	SDL_FreeSurface(G1);
+	SDL_FreeSurface(B2);
+	SDL_FreeSurface(G2);
+	SDL_FreeSurface(B3);
+	SDL_FreeSurface(G3);
+	SDL_FreeSurface(B4);
+	SDL_FreeSurface(G4);
+	SDL_FreeSurface(B5);
+	SDL_FreeSurface(G5);
+	SDL_FreeSurface(B6);
+	SDL_FreeSurface(G6);
+	SDL_FreeSurface(B7);
+	SDL_FreeSurface(G7);
+	SDL_FreeSurface(B8);
+	SDL_FreeSurface(G8);
+	SDL_FreeSurface(B9);
+	SDL_FreeSurface(G9);
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc != 2)
@@ -228,6 +382,8 @@ int main(int argc, char *argv[])
 	{
 		array_to_file(strcat(argv[1],".result"), solved);
 		sudoku_to_img(before,solved);
+		//Uncomment below to see all step img
+		//sudoku_to_all_steps_img(before,solved);
 	}
 
 	free(solved);

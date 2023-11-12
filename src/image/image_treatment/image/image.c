@@ -15,9 +15,6 @@
 #define MASK_LEN_GAUSS_7 49 
 #define KERNEL_SIZE 2 
 #define PI 3.141592653589793238462
-
-//int len,h,w;
-
 typedef struct {
 	int x;
 	int y;
@@ -26,130 +23,12 @@ typedef struct {
 	P p1;
 	P p2;
 }L;
-int * flood_fill(int i, int * dim ,int * isl)
+void extract grid()
 {
-	//coo has len 4 
-	//modifies coo as : {lowest x, lowest y, max y, size of the island}
-	//recursive
-	
-	//must go to iterative
-	//flood
-	isl[i] = 0;
-	int * catch;
-	int * res = malloc(4*sizeof(int));
-	res[3] = 1;
-	//dim[0] = width of isl
-	res[0] = i / dim[0];
-	res[1] = i % dim[0];
-	res[2] = 0;
-	
-	int dn = i - dim[0];
-	int up = i + dim[0];
-	int r = i + 1;
-	int l = i - 1;
-	int w = dim[0];
-
-	printf("hello %d\n",i);
-	if(dn >= 0 && dn < dim[1] && isl[dn] > 0)
-	{
-		catch = flood_fill(dn,dim,isl);
-		if(catch[0]*w+catch[1] < res[0]*w +res[1])
-		{
-			res[0] = catch[0]; // new lowest x1
-			res[1] = catch[1]; // new lowest y1
-		}
-		else if(catch[0] == res[0] && catch[2] > res[2])
-			res[2] = catch[2]; // x1 && new highest y2
-		res[3] += catch[3];	
-	}
-	if(up >= 0 && up < dim[1] && isl[up] > 0)
-	{
-		catch = flood_fill(up,dim,isl);
-		if(catch[0]*w +catch[1] < res[0]*w+res[1])
-		{
-			res[0] = catch[0];
-			res[1] = catch[1];
-		}
-		else if(catch[0] == res[0] && catch[2] > res[2])
-			res[2] = catch[2];
-		res[3] += catch[3];	
-	}
-	if(r >= 0 && r < dim[1] && isl[r] > 0)
-	{
-		catch = flood_fill(r,dim,isl);
-		if(catch[0]*w+catch[1] < res[0]*w+res[1])
-		{
-			res[0] = catch[0];
-			res[1] = catch[1];
-		}
-		else if(catch[0] == res[0] && catch[2] > res[2])
-			res[2] = catch[2];
-		res[3] += catch[3];	
-	}
-	if(l >= 0 && l < dim[1] && isl[l] > 0)
-	{
-		catch = flood_fill(l,dim,isl);
-		if(catch[0]*w+catch[1] < res[0]*w+res[1])
-		{
-			res[0] = catch[0];
-			res[1] = catch[1];
-		}
-		else if(catch[0] == res[0] && catch[2] > res[2])
-			res[2] = catch[2];
-		res[3] += catch[3];	
-	}
-	return res;
-}
-void extract_grid(SDL_Surface * sco)
-{
-
-	int * pixels = sco->pixels;
-	int w = sco->w;
-	int h = sco->h;
-	int len = w*h;
-	int dim[2] = {w,len};
-	int * isl = malloc(len*sizeof(int));
-	int i;
-	//copy of pixel array
-	for(i = 0;i < len; i++)
-		isl[i] = pixels[i];
-
 	int max = 0;
-	//holds lowest coordinates : x1 y1 ; plus max y2 on line x1
-	int coo[3] = {h, w, w};
-	int * mem;
-
-	//performing flood-fill of black pixels
-	for(i = 0; i < len; i++)
-	{
-		// pixel is white
-		if(isl[i] > 0)
-		{
-			mem = flood_fill(i,dim,isl);
-			if(mem[0]*w+mem[1] < coo[0]*w+coo[1])
-			{
-				coo[0] = mem[0];
-				coo[1] = mem[1];
-			}
-			else if(mem[0] == coo[0] && mem[2] > coo[2])
-			       coo[2] = mem[2]; 
-			if(mem[3] > max)
-				max = mem[3];
-		}
-	}
-
-	int side = coo[2] - coo[1];
-//crop square grid from upper left corner
-	const SDL_Rect src = {coo[0],coo[1],side,side};
-	SDL_Rect dst = {0,0,w,h};
-	SDL_BlitScaled(sco,&src,sco,&dst);
-
-	free(isl);
-
-	IMG_SavePNG(sco,"grid.png");
+	int temp = 0;
 }
-
-/*
+	/*
 P * line_sect(L * line1, L * line2)
 {
 	//double r1 = (line1->p2.y - line1->p1.y) / (line1->p2.x - line1->p1.x);
@@ -1784,11 +1663,7 @@ int main(int argc, char** argv)
 
     if (texture == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
-/*
-    w = sco->w;
-    h = sco->h;
-    len = w*h;
-*/
+
     int angle = 0;
     int j = 1;
     if(argc > 3)
@@ -1855,14 +1730,12 @@ int main(int argc, char** argv)
 		int* cood = line_inter(5.9,-6.98,5.6,-11.46,11.56,-13.54);
 		printf("line intersection :%d %d\n",cood[0],cood[1]);
 		break;
-	    case 7:
-		//surface_to_invert(sco);
-		extract_grid(sco);
-		break;
 	} 
 
     printf("%s\n","work done");
 
+    //int w = sco->w;
+    //int h = sco->h;
     // - Resize the window according to the size of the image.
     SDL_SetWindowSize(window, 1000, 1000);
 
