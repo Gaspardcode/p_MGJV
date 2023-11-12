@@ -28,6 +28,69 @@ typedef struct {
 }L;
 int * flood_fill(int i, int * dim ,int * isl)
 {
+	int * q = malloc(sizeof(int));
+	int * res = malloc(4*sizeof(int));
+	res[0] = res[2] = dim[0];
+	res[1] = dim[1]/dim[0];
+	res[3] = 0;
+	q[0] = i;
+	int len = 1;
+	int x,y,dn,up,l,r;
+	while(len > 0)
+	{
+		len--;
+		i = q[len];
+		q = realloc(q,len*sizeof(int));
+		isl[i] = 0;
+		res[3]++;
+		x = i / dim[0];
+		y = i / dim[0];
+		
+		if(x < res[0] && y < res[1])
+		{
+			res[0] = x;
+			res[1] = y;
+		}
+		else if(x == res[0] && y > res[2])
+			res[2] = y;
+
+		//4 coordinates to check
+		dn = i - dim[0];
+		up = i + dim[0];
+		r = i + 1;
+		l = i - 1;
+
+		if(dn >= 0 && dn < dim[1] && isl[dn] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = dn;	
+		}
+		if(up >= 0 && up < dim[1] && isl[up] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = up;	
+		}
+		if(r >= 0 && r < dim[1] && isl[r] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = r;	
+		}
+		if(l >= 0 && l < dim[1] && isl[l] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = l;	
+		}
+	}
+	free(q);
+	return res;
+
+}
+int * flood_fill_rec(int i, int * dim ,int * isl)
+{
 	//coo has len 4 
 	//modifies coo as : {lowest x, lowest y, max y, size of the island}
 	//recursive
@@ -126,15 +189,16 @@ void extract_grid(SDL_Surface * sco)
 		if(isl[i] > 0)
 		{
 			mem = flood_fill(i,dim,isl);
-			if(mem[0]*w+mem[1] < coo[0]*w+coo[1])
+			//if(mem[0]*w+mem[1] < coo[0]*w+coo[1])
+			//else if(mem[0] == coo[0] && mem[2] > coo[2])
+			       //coo[2] = mem[2]; 
+			if(mem[3] > max)
 			{
+				max = mem[3];
 				coo[0] = mem[0];
 				coo[1] = mem[1];
+			       	coo[2] = mem[2]; 
 			}
-			else if(mem[0] == coo[0] && mem[2] > coo[2])
-			       coo[2] = mem[2]; 
-			if(mem[3] > max)
-				max = mem[3];
 		}
 	}
 
@@ -1856,6 +1920,7 @@ int main(int argc, char** argv)
 		printf("line intersection :%d %d\n",cood[0],cood[1]);
 		break;
 	    case 7:
+		//surface_to_adaptive_treshold(sco,1);
 		//surface_to_invert(sco);
 		extract_grid(sco);
 		break;
