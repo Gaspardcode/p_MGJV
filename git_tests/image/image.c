@@ -30,9 +30,9 @@ int * flood_fill(int i, int * dim ,int * isl)
 {
 	int * q = malloc(sizeof(int));
 	int * res = malloc(4*sizeof(int));
-	res[0] = res[2] = dim[0];
-	res[1] = dim[1]/dim[0];
-	res[3] = 0;
+	res[0] = dim[1]/dim[0];
+	res[1] = dim[0];
+	res[2] = res[3] = 0;
 	q[0] = i;
 	int len = 1;
 	int x,y,dn,up,l,r;
@@ -44,14 +44,14 @@ int * flood_fill(int i, int * dim ,int * isl)
 		isl[i] = 0;
 		res[3]++;
 		x = i / dim[0];
-		y = i / dim[0];
-		
-		if(x < res[0] && y < res[1])
+		y = i % dim[0];
+
+		if(x <= res[0] && y < res[1])
 		{
 			res[0] = x;
 			res[1] = y;
 		}
-		else if(x == res[0] && y > res[2])
+		if(x == res[0] && y > res[2])
 			res[2] = y;
 
 		//4 coordinates to check
@@ -87,7 +87,6 @@ int * flood_fill(int i, int * dim ,int * isl)
 	}
 	free(q);
 	return res;
-
 }
 int * flood_fill_rec(int i, int * dim ,int * isl)
 {
@@ -165,7 +164,6 @@ int * flood_fill_rec(int i, int * dim ,int * isl)
 }
 void extract_grid(SDL_Surface * sco)
 {
-
 	int * pixels = sco->pixels;
 	int w = sco->w;
 	int h = sco->h;
@@ -179,7 +177,7 @@ void extract_grid(SDL_Surface * sco)
 
 	int max = 0;
 	//holds lowest coordinates : x1 y1 ; plus max y2 on line x1
-	int coo[3] = {h, w, w};
+	int coo[3] = {0,0,0};
 	int * mem;
 
 	//performing flood-fill of black pixels
@@ -189,9 +187,6 @@ void extract_grid(SDL_Surface * sco)
 		if(isl[i] > 0)
 		{
 			mem = flood_fill(i,dim,isl);
-			//if(mem[0]*w+mem[1] < coo[0]*w+coo[1])
-			//else if(mem[0] == coo[0] && mem[2] > coo[2])
-			       //coo[2] = mem[2]; 
 			if(mem[3] > max)
 			{
 				max = mem[3];
@@ -204,13 +199,19 @@ void extract_grid(SDL_Surface * sco)
 
 	int side = coo[2] - coo[1];
 //crop square grid from upper left corner
+	printf("x:%d y:%d side :%d max: len :%d\n",coo[0],coo[1],side,max,len);
 	const SDL_Rect src = {coo[0],coo[1],side,side};
 	SDL_Rect dst = {0,0,w,h};
-	SDL_BlitScaled(sco,&src,sco,&dst);
+
+	SDL_Surface * grid = SDL_CreateRGBSurface(0,w,h,32,0,0,0,0);
+
+	SDL_BlitSurface(sco,&src,grid,&dst);
 
 	free(isl);
 
-	IMG_SavePNG(sco,"grid.png");
+	IMG_SavePNG(grid,"grid.png");
+
+	SDL_FreeSurface(grid);
 }
 
 /*
@@ -1920,8 +1921,11 @@ int main(int argc, char** argv)
 		printf("line intersection :%d %d\n",cood[0],cood[1]);
 		break;
 	    case 7:
-		//surface_to_adaptive_treshold(sco,1);
-		//surface_to_invert(sco);
+		surface_to_adaptive_treshold(sco,10);
+		surface_to_invert(sco);
+		surface_to_closing(sco);
+		surface_to_dilatation(sco);
+		surface_to_rotate_shear(sco, 35);
 		extract_grid(sco);
 		break;
 	} 
