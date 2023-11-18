@@ -15,7 +15,69 @@
 #define MASK_LEN_GAUSS_7 49 
 #define KERNEL_SIZE 2 
 #define PI 3.141592653589793238462
+int * flood_debug(int i, int * dim ,int * isl, int * fld)
+{
+	int * q = malloc(sizeof(int));
+	int * res = malloc(4*sizeof(int));
+	res[0] = dim[1]/dim[0];
+	res[1] = dim[0];
+	res[2] = res[3] = 0;
+	q[0] = i;
+	int len = 1;
+	int x,y,dn,up,l,r;
+	while(len > 0)
+	{
+		len--;
+		i = q[len];
+		q = realloc(q,len*sizeof(int));
+		isl[i] = 0;
+		fld[i] = 0xFFFFFFFF;
+		res[3]++;
+		x = i / dim[0];
+		y = i % dim[0];
 
+		if(x <= res[0] && y < res[1])
+		{
+			res[0] = x;
+			res[1] = y;
+		}
+		if(x == res[0] && y > res[2])
+			res[2] = y;
+
+		//4 coordinates to check
+		dn = i - dim[0];
+		up = i + dim[0];
+		r = i + 1;
+		l = i - 1;
+
+		if(dn >= 0 && dn < dim[1] && isl[dn] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = dn;	
+		}
+		if(up >= 0 && up < dim[1] && isl[up] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = up;	
+		}
+		if(r >= 0 && r < dim[1] && isl[r] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = r;	
+		}
+		if(l >= 0 && l < dim[1] && isl[l] > 0)
+		{
+			len++;
+			q = realloc(q,len*sizeof(int));
+			q[len-1] = l;	
+		}
+	}
+	free(q);
+	return res;
+}
 int * flood_fill(int i, int * dim ,int * isl)
 {
 	int * q = malloc(sizeof(int));
@@ -86,7 +148,11 @@ void extract_grid(SDL_Surface * sco)
 	int len = w*h;
 	int dim[2] = {w,len};
 	int * isl = malloc(len*sizeof(int));
+	int * fld = calloc(len,sizeof(int));
 	int i;
+
+	SDL_LockSurface(sco);
+
 	//copy of pixel array
 	for(i = 0;i < len; i++)
 		isl[i] = pixels[i];
@@ -102,21 +168,30 @@ void extract_grid(SDL_Surface * sco)
 		// pixel is white
 		if(isl[i] > 0)
 		{
-			mem = flood_fill(i,dim,isl);
+			//mem = flood_fill(i,dim,isl);
+			mem = flood_debug(i,dim,isl,fld);
 			if(mem[3] > max)
 			{
+			//	for(int j = 0; j < len; j++)
+			//		pixels[j] = fld[j];
 				max = mem[3];
 				coo[0] = mem[0];
 				coo[1] = mem[1];
 			       	coo[2] = mem[2]; 
 			}
+			//for(int j = 0; j < len; j++)
+			//	fld[j] = 0;
 		}
 	}
 
+	SDL_UnlockSurface(sco);
+
 	int side = coo[2] - coo[1];
-	side += 100;
+	side += 20;
 	coo[1] -= 50;
-//crop square grid from upper left corner
+	coo[0] += 40;
+	
+	//crop square grid from upper left corner
 	printf("x:%d y:%d side :%d max: %d\n",coo[0],coo[1],side,max);
 	const SDL_Rect src = {coo[0],coo[1],side,side};
 	SDL_Rect dst = {0,0,side,side};
@@ -126,6 +201,7 @@ void extract_grid(SDL_Surface * sco)
 	SDL_BlitSurface(sco,&src,grid,&dst);
 
 	free(isl);
+	free(fld);
 
 	IMG_SavePNG(grid,"grid.png");
 
