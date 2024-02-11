@@ -1,5 +1,14 @@
 /* install tutorial */
-Welcome
+Welcome.
+To start the application, first clone the repository.
+Then execute the following command:
+
+cd src/graphics && make -B && ./graphics
+
+You are now ready to use our OCR.
+
+/* Navigation tutorial */
+
 Our application features 11 buttons.
 1. BLACK AND WHITE : can be used to convert an image in black and white.
 2. HOUGH : performes a canny edge followed by a hough transform.
@@ -17,3 +26,11 @@ Our application features 11 buttons.
 10. DRAW : enters a menu to test the IA.
             The user can draw a number, which the IA shall try to find out.
 11. QUIT : allows to quit the application.
+
+/* NB */
+The project was made possible by SDL and GTK.
+Credits to my workmates :
+Medhi Azouz : https://gitmehdii.github.io/
+Victor Agahi : https://victoragahi.github.io/
+Jules Magnan : https://magnanjules.github.io/
+Feel free to explore. The subfolder digit_recognition contains a self-generated database.
