@@ -1,5 +1,5 @@
 /* install tutorial */
-Welcome.
+Welcome. \n
 To start the application, first clone the repository.
 Then execute the following command:
 
