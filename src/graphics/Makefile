@@ -6,14 +6,14 @@ CFLAGS = -Wall -Wextra -std=c99 -march=native `pkg-config --cflags sdl2 SDL2_ima
 LDFLAGS =
 LDLIBS = `pkg-config --libs gtk+-3.0` `pkg-config --libs sdl2 SDL2_image` -lm -fPIE
 
-SRC = image.c masks.c dataset.c knn.c
+SRC = main.c image.c masks.c graphics.c
 OBJ = ${SRC:.c=.o}
 DEP = ${SRC:.c=.d}
 
-all:dataset knn 
+all: graphics
 
-dataset:dataset.o image.o
-knn: knn.o image.o
+main: main.o masks.o image.o
+graphics: graphics.o image.o 
 
 -include ${DEP}
 
@@ -22,7 +22,7 @@ knn: knn.o image.o
 clean:
 	${RM} ${OBJ}
 	${RM} ${DEP}
-	${RM} main knn dataset data/*/[0-9][0-9][0-9][0-9][0-9][0-9].png
+	${RM} main graphics *.png
 	${RM} ../make_solve/images/cases/*.bmp
 	${RM} ../make_solve/images/caracters/*.bmp
 	${RM} ../digit_recognition/ocr
