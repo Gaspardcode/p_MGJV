@@ -49,7 +49,7 @@ Our application features 11 buttons.  <br />
 ## Troubleshooting
 <br/>
 
-If the application crashs, which she certainly can, and you cannot restart it, Try to run the following : <br/>
+If the application crashs, which it certainly can, and you cannot restart it, try to run the following : <br/>
 ```bash
 make clean && make -B && ./graphics
 ```
